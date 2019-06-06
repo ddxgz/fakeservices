@@ -5,6 +5,7 @@ from rdflib import URIRef
 from rdflib.namespace import RDF
 
 from fakeservices import home_service
+from fakeservices.home_service import SOSA, QUDT
 
 
 class Test_TestSystem(unittest.TestCase):
@@ -57,6 +58,11 @@ class Test_TestHumiditySensor(unittest.TestCase):
         self.assertEqual(len(self.sen.observations), 0)
         obs = self.sen.get_current_obs()
         self.assertEqual(len(self.sen.observations), 1)
+        # get last element in objects generator
+        *_, result = self.sen.graph[URIRef(obs['@id']):SOSA.hasResult]
+        *_, value_g = self.sen.graph[result:QUDT.numericValue:]
+        self.assertEqual(obs['value'], value_g.toPython())
+
         self.assertAlmostEqual(self.sen.get_current_obs()[
                                'value'], 40, delta=20)
 

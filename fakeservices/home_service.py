@@ -18,7 +18,7 @@ class Sensor:
         self.uid = uid
         self.uri = URIRef(uid)
         self.__type = obs_type
-        self._system = ''
+        self._system=''
         if system:
             self.system = system
         self.observations = []
