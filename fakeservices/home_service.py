@@ -14,10 +14,13 @@ QUDT_UNIT = Namespace('http://qudt.org/1.1/vocab/unit#')
 
 
 class Sensor:
-    def __init__(self, uid, obs_type):
+    def __init__(self, uid, obs_type, system=None):
         self.uid = uid
         self.uri = URIRef(uid)
         self.__type = obs_type
+        self._system = ''
+        if system:
+            self.system = system
         self.observations = []
         self.sensor = fake_sense_hat.SenseHat()
         self.graph = Graph()
@@ -29,8 +32,19 @@ class Sensor:
     def obs_type(self):
         return self.__type
 
+    @property
+    def system(self):
+        return self._system
+
+    @system.setter
+    def system(self, value):
+        self._system = value
+
     def dump_rdf(self, out, format='turtle'):
         self.graph.serialize(out, format=format)
+
+    # def set_system(self, system: str):
+        # self._system = system
 
     def _obs_id(self):
         return f'{self.uid}/Observation/{len(self.observations)+1}'
@@ -45,6 +59,36 @@ class Sensor:
         self.graph.add((node, QUDT.numericValue, Literal(
             obs['value'], datatype=XSD.double)))
         return node
+
+
+class HumiditySensor(Sensor):
+    def __init__(self, uid):
+        super().__init__(uid, IOT.Humidity)
+
+    def get_current_obs(self):
+        obs_id = self._obs_id()
+        obs_uri = self._obs_uri()
+
+        self.graph.add((self.uri, SOSA.madeObservation, obs_uri))
+        self.graph.add((obs_uri, RDF.type, SOSA.Observation))
+        self.graph.add((obs_uri, SOSA.observedProperty, URIRef(self.system)))
+        self.graph.add((obs_uri, SOSA.madeBySensor, self.uri))
+        time_now = datetime.now()
+        resultTime = f'{(time_now.strftime("%Y-%m-%dT%H-%M-%S"))}+02:00'
+        self.graph.add(
+            (obs_uri, SOSA.resultTime, Literal(time_now, datatype=XSD.dateTime)))
+
+        obs = {
+            '@id': obs_id,
+            'value': self.sensor.get_humidity(),
+            'unit': 'qudt-unit-1-1:DegreeCelsius',
+            'type': 'qudt-q-q:QuantityValue',
+            'result_time': resultTime,
+        }
+        self.observations.append(obs)
+        # TODO result to graph
+        self.graph.add((obs_uri, SOSA.hasResult, self._result_node(obs)))
+        return obs
 
 
 class System:
@@ -63,6 +107,7 @@ class System:
 
     def add_sensor(self, sensor: Sensor):
         self.sensors.append(sensor)
+        sensor.system = self.uid
         self.graph.add((self.uri, SSN.hasSubSystem, sensor.uri))
 
     def load(self, obj_in):
@@ -92,36 +137,6 @@ class System:
         self.graph.bind("iot", IOT)
         self.graph.bind("qudt-1-1", QUDT)
         self.graph.bind('qudt-unit-1-1', QUDT_UNIT)
-
-
-class HumiditySensor(Sensor):
-    def __init__(self, uid):
-        super().__init__(uid, IOT.Humidity)
-
-    def get_current_obs(self):
-        obs_id = self._obs_id()
-        obs_uri = self._obs_uri()
-
-        self.graph.add((self.uri, SOSA.madeObservation, obs_uri))
-        self.graph.add((obs_uri, RDF.type, SOSA.Observation))
-        # self.graph.add((obs_uri, SOSA.observedProperty, obs_uri))
-        self.graph.add((obs_uri, SOSA.madeBySensor, self.uri))
-        time_now = datetime.now()
-        resultTime = f'{(time_now.strftime("%Y-%m-%dT%H-%M-%S"))}+02:00'
-        self.graph.add(
-            (obs_uri, SOSA.resultTime, Literal(time_now, datatype=XSD.dateTime)))
-
-        obs = {
-            '@id': obs_id,
-            'value': self.sensor.get_humidity(),
-            'unit': 'qudt-unit-1-1:DegreeCelsius',
-            'type': 'qudt-q-q:QuantityValue',
-            'result_time': resultTime,
-        }
-        self.observations.append(obs)
-        # TODO result to graph
-        self.graph.add((obs_uri, SOSA.hasResult, self._result_node(obs)))
-        return obs
 
 
 if __name__ == '__main__':
