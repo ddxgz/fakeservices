@@ -19,7 +19,7 @@ class Test_TestSystem(unittest.TestCase):
         sys = home_service.System('s1', [sen])
         sys.record_obs()
         # out = io.BytesIO()
-        out = 's1.ttl'
+        out = 'tmp/s1.ttl'
         sys.dump_rdf(out)
         # print(out.getvalue())
         # self.assertIn(b's1', out.getvalue())
