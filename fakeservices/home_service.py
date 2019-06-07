@@ -14,15 +14,18 @@ QUDT_UNIT = Namespace('http://qudt.org/1.1/vocab/unit#')
 
 
 class Sensor:
-    def __init__(self, uid, obs_type, system=None):
+    def __init__(self, uid, obs_type, system=None, obs_limit=100):
         self.uid = uid
         self.uri = URIRef(uid)
         self.__type = obs_type
-        self._system=''
+        self._system = ''
         if system:
             self.system = system
+        self.obs_limit = obs_limit
+
         self.observations = []
         self.sensor = fake_sense_hat.SenseHat()
+
         self.graph = Graph()
         self.graph.add((self.uri, RDF.type, SSN.System))
         self.graph.add((self.uri, RDF.type, SOSA.Sensor))
@@ -45,6 +48,12 @@ class Sensor:
 
     # def set_system(self, system: str):
         # self._system = system
+
+    def add_observation(self, obs):
+        # not exceed the obs_limit
+        if len(self.observations) >= self.obs_limit:
+            self.observations.pop(0)
+        self.observations.append(obs)
 
     def _obs_id(self):
         return f'{self.uid}/Observation/{len(self.observations)+1}'
@@ -85,8 +94,7 @@ class HumiditySensor(Sensor):
             'type': 'qudt-q-q:QuantityValue',
             'result_time': resultTime,
         }
-        self.observations.append(obs)
-        # TODO result to graph
+        self.add_observation(obs)
         self.graph.add((obs_uri, SOSA.hasResult, self._result_node(obs)))
         return obs
 
@@ -121,12 +129,14 @@ class System:
 
     def record_obs(self):
         for sensor in self.sensors:
-            if not self.obs.get(sensor.uid):
-                self.obs[sensor.uid] = []
+            # if not self.obs.get(sensor.uid):
+            #     self.obs[sensor.uid] = []
 
-            self.obs[sensor.uid].append(sensor.get_current_obs())
-            # TODO to add
-            # self.graph.add((obs_id, SOSA.observedProperty, obs_id))
+            # self.obs[sensor.uid].append(sensor.get_current_obs())
+            # # TODO to add
+            # # self.graph.add((obs_id, SOSA.observedProperty, obs_id))
+
+            sensor.get_current_obs()
 
     def run(self, obs_interval=10):
         pass
