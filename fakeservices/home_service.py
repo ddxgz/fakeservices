@@ -6,8 +6,10 @@ from datetime import datetime, timedelta
 from rdflib import Graph, Namespace, BNode, URIRef, Literal
 from rdflib.namespace import RDF, XSD
 import numpy as np
+import pysnooper
 
-from . import fake_sense_hat
+# from . import fake_sense_hat
+import fake_sense_hat
 
 IOT = Namespace('http://iotschema.org/')
 SOSA = Namespace('http://www.w3.org/ns/sosa/')
@@ -189,6 +191,7 @@ class System:
 
             sensor.get_current_obs(time_now)
 
+    # @pysnooper.snoop()
     def init_observations(self, num=100, days_back=5, obs_interval=100):
         time_now = datetime.now() - timedelta(days=days_back)
         for i in range(num):
@@ -211,6 +214,24 @@ class System:
         self.graph.bind('qudt-unit-1-1', QUDT_UNIT)
 
 
+def generate_obs():
+    num_sensors = range(1, 7)
+    num_obs = range(13, 1000, 27)
+
+    for num_sensor in num_sensors:
+        for num_ob in num_obs:
+            # print(num_sensor, num_ob)
+            sys_name = f'AlexHomeEnv{num_sensor}_{num_ob}'
+
+            sensors_hu = [HumiditySensor(
+                f'{sys_name}/SensorHumidity{i}') for i in range(num_sensor)]
+            sensors_te = [TemperatureSensor(
+                f'{sys_name}/TemperatureHumidity{i}') for i in range(num_sensor)]
+
+            sys = System(sys_name, sensors_hu + sensors_te)
+            sys.init_observations(num=num_ob, days_back=num_ob / 10 + 5)
+            sys.dump_rdf(f'tmp/{sys_name}.ttl')
+
+
 if __name__ == '__main__':
-    hs = HumiditySensor('hs')
-    print(hs.get_current_obs())
+    generate_obs()
