@@ -8,8 +8,8 @@ from rdflib.namespace import RDF, XSD
 import numpy as np
 import pysnooper
 
-# from . import fake_sense_hat
-import fake_sense_hat
+from . import fake_sense_hat
+# import fake_sense_hat
 
 IOT = Namespace('http://iotschema.org/')
 SOSA = Namespace('http://www.w3.org/ns/sosa/')
