@@ -34,6 +34,7 @@ class iHealthModel:
         self.res_data_key = {
             'glucose': ('BGDataList', 'gen_glucose', 'BGUnit'),
             'weight': ('WeightDataList', 'gen_weight', 'WeightUnit'),
+            'bp': ('BPDataList', 'gen_bp', 'BPUnit'),
         }
         self.data_key = self.res_data_key[resource_path][0]
         self.gen_func = getattr(self, self.res_data_key[resource_path][1])
@@ -62,6 +63,32 @@ class iHealthModel:
 
     def json(self):
         return json.dumps(self.data)
+
+    def gen_bp(self, date, freq=0.5):
+        if np.random.random_sample() > freq:
+            return []
+
+        m_date = int(
+            datetime.timestamp(date +
+                               timedelta(hours=np.random.normal(8, 0.4))))
+
+        hp = int(np.random.normal(125, 7, 1)[0])
+        lp = int(np.random.normal(85, 5, 1)[0])
+        hr = int(np.random.normal(80, 7, 1)[0])
+
+        record = {
+            'HP': hp,
+            'LP': lp,
+            'HR': hr,
+            'DataID': str(uuid.uuid4()),
+            'MDate': m_date,
+            'uderid': self.userid,
+            'Note': 'nothing',
+            'LastChangeTime': m_date,
+            "DataSource": "FromDevice",
+            'TimeZone': '+0200'
+        }
+        return [record]
 
     def gen_weight(self, date, height=1.75, freq=0.3):
         if np.random.random_sample() > freq:
@@ -121,7 +148,6 @@ class iHealthModel:
         return measures
 
 
-# user-id, The encoded ID of the user. Use "-" (dash) for current logged-in user.
 # support only date range, the additional time information is ignored
 @app.route('/openapiv2/application/<resource_path>.json', methods=['GET'])
 def activities(resource_path):
@@ -134,14 +160,5 @@ def activities(resource_path):
         end_date = datetime.fromtimestamp(end_time).strftime('%Y-%m-%d')
 
         activity = iHealthModel(resource_path, start_date, end_date)
-        logger.debug(f'data: {activity}')
-        return jsonify(activity.data)
-
-
-@app.route('/1/user/-/foods/log/<resource_path>/date/<base_date>/<end_date>/',
-           methods=['GET'])
-def foods_log(resource_path, base_date, end_date):
-    if request.method == 'GET':
-        activity = FitbitModel('foods/log', resource_path, base_date, end_date)
         logger.debug(f'data: {activity}')
         return jsonify(activity.data)
