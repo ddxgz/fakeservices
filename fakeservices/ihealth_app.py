@@ -32,7 +32,8 @@ class iHealthModel:
         self.userid = userid
         # self.data = self.generate()
         self.res_data_key = {
-            'glucose': ('BGDataList', 'gen_glucose', 'BGUnit')
+            'glucose': ('BGDataList', 'gen_glucose', 'BGUnit'),
+            'weight': ('WeightDataList', 'gen_weight', 'WeightUnit'),
         }
         self.data_key = self.res_data_key[resource_path][0]
         self.gen_func = getattr(self, self.res_data_key[resource_path][1])
@@ -61,6 +62,30 @@ class iHealthModel:
 
     def json(self):
         return json.dumps(self.data)
+
+    def gen_weight(self, date, height=1.75, freq=0.3):
+        if np.random.random_sample() > freq:
+            return []
+
+        m_date = int(
+            datetime.timestamp(date +
+                               timedelta(hours=np.random.normal(19, 0.6))))
+        weight = round(np.random.normal(75, 2, 1)[0], 1)
+        bmi = weight / (height * height)
+        # boneval = np.random.normal(2, 1, 1)
+
+        record = {
+            'BMI': bmi,
+            'WeightValue': weight,
+            'DataID': str(uuid.uuid4()),
+            'MDate': m_date,
+            'uderid': self.userid,
+            'Note': 'nothing',
+            'LastChangeTime': m_date,
+            "DataSource": "FromDevice",
+            'TimeZone': '+0200'
+        }
+        return [record]
 
     def gen_glucose(self, date):
         mgdls = np.random.normal(170, 30, 3)
