@@ -31,10 +31,15 @@ class Sensor:
         self.observations = []
         self.sensor = fake_sense_hat.SenseHat()
 
-        self.graph = Graph()
-        self.graph.add((self.uri, RDF.type, SSN.System))
-        self.graph.add((self.uri, RDF.type, SOSA.Sensor))
-        self.graph.add((self.uri, SOSA.observes, obs_type))
+        # self.graph = Graph()
+
+        self.sensor_graph = Graph()
+        self.sensor_graph.add((self.uri, RDF.type, SSN.System))
+        self.sensor_graph.add((self.uri, RDF.type, SOSA.Sensor))
+        self.sensor_graph.add((self.uri, SOSA.observes, obs_type))
+
+        self.obs_graph = Graph()
+        self._current_obs_graph = Graph()
 
     @property
     def obs_type(self):
@@ -48,11 +53,18 @@ class Sensor:
     def system(self, value):
         self._system = value
 
+    @property
+    def graph(self):
+        return self.sensor_graph + self.obs_graph
+
     def dump_rdf(self, out, format='turtle'):
         self.graph.serialize(out, format=format)
 
     # def set_system(self, system: str):
-        # self._system = system
+    # self._system = system
+
+    def latest_obs_graph(self):
+        return self.sensor_graph + self._current_obs_graph
 
     def add_observation(self, obs):
         # not exceed the obs_limit
@@ -60,24 +72,49 @@ class Sensor:
             self.observations.pop(0)
         self.observations.append(obs)
 
+    def _obs_graph(self, obs: dict, time_now=None) -> Graph:
+        obs_uri = self._obs_uri()
+
+        graph = Graph()
+
+        graph.add((self.uri, SOSA.madeObservation, obs_uri))
+        graph.add((obs_uri, RDF.type, SOSA.Observation))
+        graph.add((obs_uri, SOSA.observedProperty, URIRef(self.system)))
+        graph.add((obs_uri, SOSA.madeBySensor, self.uri))
+
+        # if not time_now:
+        #     time_now = datetime.now()
+        # resultTime = f'{(time_now.strftime("%Y-%m-%dT%H-%M-%S"))}+02:00'
+        graph.add(
+            (obs_uri, SOSA.resultTime, Literal(time_now,
+                                               datatype=XSD.dateTime)))
+
+        node = BNode()
+        graph.add((node, RDF.type, URIRef(obs['type'])))
+        # graph.add((node, RDF.type, QUDT.QuantityValue))
+        # graph.add((node, QUDT.unit, QUDT_UNIT.DegreeCelsius))
+        graph.add((node, QUDT.unit, obs['unit']))
+        graph.add(
+            (node, QUDT.numericValue, Literal(obs['value'],
+                                              datatype=XSD.double)))
+
+        # graph.add((obs_uri, SOSA.hasResult, self._result_node(obs)))
+        graph.add((obs_uri, SOSA.hasResult, node))
+
+        self._current_obs_graph = graph
+        return graph
+
     def _add_obs_back(self, obs: dict, time_now=None) -> dict:
         obs_id = self._obs_id()
         obs_uri = self._obs_uri()
-
-        self.graph.add((self.uri, SOSA.madeObservation, obs_uri))
-        self.graph.add((obs_uri, RDF.type, SOSA.Observation))
-        self.graph.add((obs_uri, SOSA.observedProperty, URIRef(self.system)))
-        self.graph.add((obs_uri, SOSA.madeBySensor, self.uri))
-
         if not time_now:
             time_now = datetime.now()
         resultTime = f'{(time_now.strftime("%Y-%m-%dT%H-%M-%S"))}+02:00'
-        self.graph.add(
-            (obs_uri, SOSA.resultTime, Literal(time_now, datatype=XSD.dateTime)))
-
-        self.graph.add((obs_uri, SOSA.hasResult, self._result_node(obs)))
         obs['@id'] = obs_id
         obs['result_time'] = resultTime
+
+        obs_graph = self._obs_graph(obs, time_now=time_now)
+        self.obs_graph += obs_graph
         return obs
 
     def _obs_id(self):
@@ -86,15 +123,17 @@ class Sensor:
     def _obs_uri(self):
         return URIRef(self._obs_id())
 
-    def _result_node(self, obs: dict) -> BNode:
-        node = BNode()
-        self.graph.add((node, RDF.type, URIRef(obs['type'])))
-        # self.graph.add((node, RDF.type, QUDT.QuantityValue))
-        # self.graph.add((node, QUDT.unit, QUDT_UNIT.DegreeCelsius))
-        self.graph.add((node, QUDT.unit, obs['unit']))
-        self.graph.add((node, QUDT.numericValue, Literal(
-            obs['value'], datatype=XSD.double)))
-        return node
+    # deprecated
+    # def _result_node(self, obs: dict) -> BNode:
+    #     node = BNode()
+    #     self.graph.add((node, RDF.type, URIRef(obs['type'])))
+    #     # self.graph.add((node, RDF.type, QUDT.QuantityValue))
+    #     # self.graph.add((node, QUDT.unit, QUDT_UNIT.DegreeCelsius))
+    #     self.graph.add((node, QUDT.unit, obs['unit']))
+    #     self.graph.add(
+    #         (node, QUDT.numericValue, Literal(obs['value'],
+    #                                           datatype=XSD.double)))
+    #     return node
 
 
 class HumiditySensor(Sensor):
@@ -132,13 +171,15 @@ class TemperatureSensor(Sensor):
 
 
 class System:
-    def __init__(self, uid: str = None, sensors: List[Sensor] = [],
+    def __init__(self,
+                 uid: str = None,
+                 sensors: List[Sensor] = [],
                  file_or_bytesio=None):
         self.uid = uid if uid else ''
         self.uri = URIRef(uid) if uid else URIRef('')
         self.sensors = []  # type: List[Sensor]
         self.graph = Graph()
-        self.__bind_namespaces()
+        self.__bind_namespaces(self.graph)
 
         if file_or_bytesio:
             self.load(file_or_bytesio)
@@ -167,17 +208,19 @@ class System:
         # else:
         #     raise IOError
         # self.graph.parse(data=data, format=format)
-        self.graph.parse(
-            data=file_or_bytesio, format=format)
+        self.graph.parse(data=file_or_bytesio, format=format)
         uris = self.graph.subjects(RDF.type, SSN.system)
         uri = yield from uris
         print(f'uri from load: {uri}')
         self.uri = uri
 
     def dump_rdf(self, out, format='turtle'):
+        graph = Graph()
+        graph = self.graph
+
         for s in self.sensors:
             # s.graph.serialize(out, format=format)
-            self.graph += self.graph + s.graph
+            graph += s.graph
         self.graph.serialize(out, format=format)
 
     def record_obs(self, time_now=None):
@@ -190,6 +233,16 @@ class System:
             # # self.graph.add((obs_id, SOSA.observedProperty, obs_id))
 
             sensor.get_current_obs(time_now)
+
+    def current_obs_graph_str(self, format='turtle') -> str:
+        self.record_obs()
+
+        graph = Graph()
+        # self.__bind_namespaces(graph)
+        graph = self.graph
+        for sensor in self.sensors:
+            graph += sensor.latest_obs_graph()
+        return graph.serialize(format=format)
 
     # @pysnooper.snoop()
     def init_observations(self, num=100, days_back=5, obs_interval=100):
@@ -206,12 +259,12 @@ class System:
             self.record_obs()
             time.sleep(obs_interval)
 
-    def __bind_namespaces(self):
-        self.graph.bind("ssn", SSN)
-        self.graph.bind("sosa", SOSA)
-        self.graph.bind("iot", IOT)
-        self.graph.bind("qudt-1-1", QUDT)
-        self.graph.bind('qudt-unit-1-1', QUDT_UNIT)
+    def __bind_namespaces(self, graph):
+        graph.bind("ssn", SSN)
+        graph.bind("sosa", SOSA)
+        graph.bind("iot", IOT)
+        graph.bind("qudt-1-1", QUDT)
+        graph.bind('qudt-unit-1-1', QUDT_UNIT)
 
 
 def generate_obs():
@@ -223,10 +276,14 @@ def generate_obs():
             # print(num_sensor, num_ob)
             sys_name = f'AlexHomeEnv{num_sensor}_{num_ob}'
 
-            sensors_hu = [HumiditySensor(
-                f'{sys_name}/SensorHumidity{i}') for i in range(num_sensor)]
-            sensors_te = [TemperatureSensor(
-                f'{sys_name}/TemperatureHumidity{i}') for i in range(num_sensor)]
+            sensors_hu = [
+                HumiditySensor(f'{sys_name}/SensorHumidity{i}')
+                for i in range(num_sensor)
+            ]
+            sensors_te = [
+                TemperatureSensor(f'{sys_name}/TemperatureHumidity{i}')
+                for i in range(num_sensor)
+            ]
 
             sys = System(sys_name, sensors_hu + sensors_te)
             sys.init_observations(num=num_ob, days_back=num_ob / 10 + 5)
