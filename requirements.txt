@@ -1,0 +1,6 @@
+Flask==1.0.3
+mypy==0.701
+mypy-extensions==0.4.1
+rdflib==4.2.2
+gunicorn==20.0.4
+gevent==1.4.0

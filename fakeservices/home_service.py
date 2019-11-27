@@ -6,7 +6,7 @@ from datetime import datetime, timedelta
 from rdflib import Graph, Namespace, BNode, URIRef, Literal
 from rdflib.namespace import RDF, XSD
 import numpy as np
-import pysnooper
+# import pysnooper
 
 from . import fake_sense_hat
 # import fake_sense_hat
