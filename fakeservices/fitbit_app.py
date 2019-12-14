@@ -25,17 +25,26 @@ random_datum = {
     'water': partial(np.random.normal, 800, 200),
 }
 
+res_tag = {
+    'steps': 'schema:steps',
+    'calories': 'schema:calories',
+    'caloriesIn': 'schema:calories',
+    'water': 'saref:Water',
+}
+
 
 class FitbitModel:
     def __init__(self,
                  activity='activities',
                  resource_path='steps',
                  base_date='2018-01-01',
-                 end_date='2018-01-5'):
+                 end_date='2018-01-5',
+                 require_annotation=False):
         self.activity = activity
         self.resource_path = resource_path
         self.base_date = base_date
         self.end_date = end_date
+        self.require_annotation = require_annotation
         # self.data = self.generate()
 
     @property
@@ -48,12 +57,29 @@ class FitbitModel:
                               freq='D')
         logs = []
         for d in dates:
-            logs.append({
+            item = {
                 'dateTime': d.strftime('%Y-%m-%d'),
                 'value': int(abs(random_datum[self.resource_path]())),
-            })
+            }
+            if self.require_annotation:
+                item['semrest:hasTag'] = {'@id': res_tag[self.resource_path]}
+            logs.append(item)
 
-        return {f'{self.activity}-{self.resource_path}': logs}
+        res_path = f'{self.activity}-{self.resource_path}'
+        data = {res_path: logs}
+
+        if self.require_annotation:
+            data['@context'] = {
+                "schema": "http://schema.org/",
+                'dateTime': 'schema:dateTime',
+                "semrest": "http://semrest.org/vocab#",
+                'value': 'semrest:hasValue',
+                res_path: 'semrest:dataItem',
+                'saref': 'https://w3id.org/saref#',
+            }
+
+            data['@id'] = f"{res_path.replace('-', '/')}/{self.base_date}/{self.end_date}"
+        return data
 
     def json(self):
         return json.dumps(self.data)
@@ -64,9 +90,15 @@ class FitbitModel:
            methods=['GET'])
 def activities(resource_path, base_date, end_date):
     if request.method == 'GET':
+        content_type = request.headers.get('Accept')
+        # print(content_type)
+        require_annotation = False
+        if 'ld+json' in content_type:
+            require_annotation = True
         activity = FitbitModel('activities', resource_path, base_date,
-                               end_date)
+                               end_date, require_annotation=require_annotation)
         logger.debug(f'data: {activity}')
+
         return jsonify(activity.data)
 
 
@@ -74,6 +106,11 @@ def activities(resource_path, base_date, end_date):
            methods=['GET'])
 def foods_log(resource_path, base_date, end_date):
     if request.method == 'GET':
-        activity = FitbitModel('foods/log', resource_path, base_date, end_date)
+        content_type = request.headers.get('Accept')
+        require_annotation = False
+        if 'ld+json' in content_type:
+            require_annotation = True
+        activity = FitbitModel('foods/log', resource_path, base_date, end_date,
+                               require_annotation=require_annotation)
         logger.debug(f'data: {activity}')
         return jsonify(activity.data)
