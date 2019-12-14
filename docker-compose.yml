@@ -2,6 +2,8 @@ version: '3'
 services:
     fitbit_app:
         build: .
+        volumes:
+            - ./:/code
         ports:
             - "8002:8002"
         command: gunicorn -b 0.0.0.0:8002 -k gevent fakeservices.fitbit_app:wsgiapp
