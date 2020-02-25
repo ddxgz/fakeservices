@@ -1,0 +1,10 @@
+# FROM python:3.7-alpine
+FROM ddxgz/datasci:1.0
+WORKDIR /code
+COPY . /code
+# RUN apk add --no-cache gcc musl-dev linux-headers make automake gcc g++ subversion python3-dev
+COPY requirements.txt requirements.txt
+# RUN pip install -r requirements.txt
+RUN pip install -r requirements.txt --no-cache-dir
+# COPY . .
+ENTRYPOINT gunicorn -b 0.0.0.0:80 -k gevent fakeservices.home_app:wsgiapp
