@@ -1,5 +1,15 @@
 # FROM python:3.7-alpine
-FROM ddxgz/datasci:1.0
+# FROM ddxgz/datasci:1.0
+
+# gcr.io/data-science-258408/p4-base is ddxgz/datasci:1.0 
+FROM gcr.io/data-science-258408/p4-base
+
+# FROM python:3.7-alpine as base
+# RUN apk add --no-cache gcc musl-dev linux-headers make automake gcc g++ subversion python3-dev
+# RUN pip install numpy pandas
+
+# FROM base as app
+
 WORKDIR /code
 COPY . /code
 # RUN apk add --no-cache gcc musl-dev linux-headers make automake gcc g++ subversion python3-dev
