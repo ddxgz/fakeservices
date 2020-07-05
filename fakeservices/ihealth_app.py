@@ -19,26 +19,33 @@ app.secret_key = str(uuid.uuid4())
 app.debug = False
 wsgiapp = app.wsgi_app
 
+resource_data_key = {
+    # res: (data_key, generator function name, data unit, value item)
+    'glucose': ('BGDataList', 'gen_glucose', 'BGUnit', 'BG'),
+    'weight': ('WeightDataList', 'gen_weight', 'WeightUnit', 'WeightValue'),
+    'bp': ('BPDataList', 'gen_bp', 'BPUnit', 'HP'),
+}
+
 
 class iHealthModel:
     def __init__(self,
                  resource_path='glucose',
                  base_date='2018-01-01',
                  end_date='2018-01-5',
-                 userid=app.secret_key):
+                 userid=app.secret_key,
+                 require_annotation=False):
         self.resource_path = resource_path
         self.base_date = base_date
         self.end_date = end_date
         self.userid = userid
         # self.data = self.generate()
-        self.res_data_key = {
-            'glucose': ('BGDataList', 'gen_glucose', 'BGUnit'),
-            'weight': ('WeightDataList', 'gen_weight', 'WeightUnit'),
-            'bp': ('BPDataList', 'gen_bp', 'BPUnit'),
-        }
+        self.res_data_key = resource_data_key
         self.data_key = self.res_data_key[resource_path][0]
         self.gen_func = getattr(self, self.res_data_key[resource_path][1])
         self.unit_key = self.res_data_key[resource_path][2]
+        self.data_item_key = self.res_data_key[resource_path][3]
+
+        self.require_annotation = require_annotation
 
     @property
     def data(self):
@@ -59,6 +66,19 @@ class iHealthModel:
             'PageNumber': 1,
             'RecordCount': len(logs),
         }
+        if self.require_annotation:
+            resp['@context'] = {
+                "schema": "http://schema.org/",
+                'MDate': 'schema:dateTime',
+                "semrest": "http://semrest.org/vocab#",
+                # 'value': 'semrest:hasValue',
+                "loinc": "http://loinc.org/",
+                self.data_key: 'semrest:dataItem',
+                self.data_item_key: 'semrest:hasValue',
+            }
+
+            resp[
+                '@id'] = f"{self.data_key.replace('-', '/')}/{self.base_date}/{self.end_date}"
         return resp
 
     def json(self):
@@ -132,7 +152,7 @@ class iHealthModel:
                 datetime.timestamp(
                     # datetime.fromtimestamp(date) +
                     date + timedelta(hours=np.random.normal(hour, 0.6))))
-            measures.append({
+            item = {
                 'BG': round(bg, 1),
                 'DataID': str(uuid.uuid4()),
                 'DinnerSituation': din,
@@ -143,7 +163,10 @@ class iHealthModel:
                 'LastChangeTime': m_date,
                 "DataSource": "FromDevice",
                 'TimeZone': '+0200'
-            })
+            }
+            if self.require_annotation:
+                item['semrest:hasTag'] = {'@id': 'loinc:15074-8'}
+            measures.append(item)
 
         return measures
 
@@ -154,11 +177,24 @@ def activities(resource_path):
     if request.method == 'GET':
         start = datetime.timestamp(datetime.now() - timedelta(days=7))
         now = datetime.timestamp(datetime.now())
-        start_time = int(request.args.get('start_time', start))
-        end_time = int(request.args.get('end_time', now))
-        start_date = datetime.fromtimestamp(start_time).strftime('%Y-%m-%d')
-        end_date = datetime.fromtimestamp(end_time).strftime('%Y-%m-%d')
+        # start_time = int(request.args.get('start_time', start))
+        # end_time = int(request.args.get('end_time', now))
+        # start_date = datetime.fromtimestamp(start_time).strftime('%Y-%m-%d')
+        # end_date = datetime.fromtimestamp(end_time).strftime('%Y-%m-%d')
 
-        activity = iHealthModel(resource_path, start_date, end_date)
+        start_date = datetime.fromtimestamp(start).strftime('%Y-%m-%d')
+        end_date = datetime.fromtimestamp(now).strftime('%Y-%m-%d')
+        start_date = request.args.get('start_time', start_date)
+        end_date = request.args.get('end_time', end_date)
+
+        content_type = request.headers.get('Accept')
+        require_annotation = False
+        if 'ld+json' in content_type:
+            require_annotation = True
+
+        activity = iHealthModel(resource_path,
+                                start_date,
+                                end_date,
+                                require_annotation=require_annotation)
         logger.debug(f'data: {activity}')
         return jsonify(activity.data)
