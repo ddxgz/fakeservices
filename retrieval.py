@@ -7,6 +7,8 @@
 
 import time
 import asyncio
+import logging
+import random
 
 import requests
 import aiohttp
@@ -16,9 +18,23 @@ from typing import List, Tuple
 
 from fakeservices import config, fitbit_app, ihealth_app
 
+logger = logging.getLogger(__name__)
+# logger.setLevel(logging.In)
+handler = logging.FileHandler(filename='requests.log')
+handler.setLevel(logging.INFO)
+logger.addHandler(handler)
+consoleHandler = logging.StreamHandler()
+consoleHandler.setLevel(logging.DEBUG)
+logger.addHandler(consoleHandler)
+
 SERVICE_MAP = {'fitbit': ['steps']}
 GOOGLE_KEY = config.CREDENTIALS['google_search_api_key']
 GOOGLE_CX = config.CREDENTIALS['search_engine_id']
+TMDB_KEY = config.CREDENTIALS['tmdb_api_key']
+CITIES = [
+    'stockholm', 'gothenburg', 'paris', 'london', 'tokyo', 'shanghai',
+    'new york', 'hongkong', 'singapore', 'berlin'
+]
 
 
 def get_url(name: str,
@@ -28,18 +44,22 @@ def get_url(name: str,
     base = config.SERVICE_ENDPOINT[name]
     if name == 'fitbit':
         res_path = f'/1/user/-/activities/{resource}/date/{start_date}/{end_date}/'
-    if name == 'home':
-        res_path = '/environment'
-    if name == 'ihealth':
+    elif name == 'ihealth':
         res_path = f'/openapiv2/application/{resource}.json?start_date={start_date}&end_date={end_date}'
-    if name == 'phr':
+    elif name == 'phr':
         res_path = f'/Observation?start_date={start_date}&end_date={end_date}'
+    elif name == 'home':
+        res_path = '/environment'
+    else:
+        res_path = '/environment'
 
     return base + res_path
 
 
-def gen_requests() -> List[Tuple[str, dict, str]]:
+def gen_requests() -> Tuple[str, List[Tuple[str, dict, str]]]:
     """generate a list of requests to be performed
+
+    A list of tuples of (url, content_type, service_name)
     """
     pairs = []
     content_types = ['application/json', 'application/ld+json']
@@ -75,10 +95,10 @@ def gen_requests() -> List[Tuple[str, dict, str]]:
         'Content-Type': 'application/fhir+turtle'
     }, 'phr'))
 
-    return pairs
+    return 'health services', pairs
 
 
-def process_results(results, start_total, spent_total):
+def process_results(results, name, start_total, spent_total):
     """
     data to record:
     - req_start
@@ -94,55 +114,71 @@ def process_results(results, start_total, spent_total):
     pass
 
 
-def gen_common_service_requests():
+def gen_common_service_requests(query_cities=CITIES):
+    query = random.choice(query_cities)
     # query = 'valley+forge+national+park'
-    query = 'stockholm'
     # query = 'https://lilianweng.github.io/lil-log/2020/04/07/the-transformer-family.html#sparse-attention-matrix-factorization-sparse-transformers'
-    urls = [
-        # f'https://google.se/search?q={query}',
-        # f'https://google.com/search?q={query}',
-        # f'https://www.reddit.com/search/?q={query}',
-        f'https://www.reddit.com/',
+    urls = {
+        # 'google search': f'https://google.se/search?q={query}',
+        'google search': f'https://google.com/search?q={query}',
+        'reddit search': f'https://www.reddit.com/search/?q={query}',
+        'reddit': f'https://www.reddit.com/',
         # yelp
-        f'https://www.yelp.se/search?find_desc=Restauranger&find_loc=Stockholm',
-        f'https://www.yelp.com/search?find_desc=Restauranger&find_loc=Stockholm',
-        f'https://www.googleapis.com/customsearch/v1?key={GOOGLE_KEY}&cx={GOOGLE_CX}&q={query}',
-
+        # f'https://www.yelp.se/search?find_desc=Restauranger&find_loc=Stockholm',
+        'yelp restaurant search':
+        f'https://www.yelp.com/search?find_desc=Restauranger&find_loc={query}',
+        # f'https://www.googleapis.com/customsearch/v1?key={GOOGLE_KEY}&cx={GOOGLE_CX}&q={query}',
+        'web archive': f'https://archive.org/search.php?query={query}',
+        'imdb': f'https://www.imdb.com/find?q={query}',
+        'tmdb': f'https://www.themoviedb.org/search?query={query}',
         # f'https://api.duckduckgo.com/?q={query}&format=json',
 
         # https://www.mediawiki.org/wiki/API:Search
         # f'https://en.wikipedia.org/w/api.php?action=query&format=json&list=search&srsearch={query}'
-    ]
+    }
 
     headers = {}
-    return [(req_url, headers) for req_url in urls]
+    return 'common services', [(req_url, headers, name)
+                               for name, req_url in urls.items()]
 
 
-def gen_common_api_requests():
+def gen_common_api_requests(query_cities=CITIES):
     # query = 'valley+forge+national+park'
-    query = 'stockholm'
+    query = random.choice(query_cities)
     # query = 'https://lilianweng.github.io/lil-log/2020/04/07/the-transformer-family.html#sparse-attention-matrix-factorization-sparse-transformers'
-    urls = [
+    urls = {
         # yelp
         # f'https://api.yelp.com/v3/businesses/search?term={query}'
 
         # https://developers.google.com/custom-search/v1/using_rest#response_data
+        'google search api':
         f'https://www.googleapis.com/customsearch/v1?key={GOOGLE_KEY}&cx={GOOGLE_CX}&q={query}',
-
-        # f'https://api.duckduckgo.com/?q={query}&format=json',
+        'duck api':
+        f'https://api.duckduckgo.com/?q={query}&format=json',
 
         ## Teleport public APIs https://developers.teleport.org/api/
-        # f'https://api.teleport.org/api/cities/?{query}',
+        'teleport api':
+        f'https://api.teleport.org/api/cities/?{query}',
 
         ## The Internet Archive (the “Archive”) https://archive.readme.io/docs/getting-started
+        'web archive api':
+        f'https://archive.org/advancedsearch.php?q={query}&output=json&rows=100',
         # f'https://archive.org/wayback/available?url={query}',
 
         # https://www.mediawiki.org/wiki/API:Search
-        # f'https://en.wikipedia.org/w/api.php?action=query&format=json&list=search&srsearch={query}'
-    ]
+        'wikipedia api':
+        f'https://en.wikipedia.org/w/api.php?action=query&format=json&list=search&srsearch={query}',
+        'tmdb api':
+        f'https://api.themoviedb.org/3/search/multi?api_key={TMDB_KEY}&query={query}',
+    }
 
     headers = {}
-    return [(req_url, headers) for req_url in urls]
+    return 'common apis', [(req_url, headers, name)
+                           for name, req_url in urls.items()]
+
+
+def utf8len(s):
+    return len(s.encode('utf-8'))
 
 
 async def fetch(session, url, headers, service_name):
@@ -161,12 +197,13 @@ async def fetch(session, url, headers, service_name):
             'spent': spent,
             'content_type': resp_headers.get('Content-Type'),
             'content_length': resp_headers.get('Content-Length'),
+            'bytes_len': utf8len(text),
             'service': service_name,
             'url': url,
         }
 
 
-async def req_services(url_headers: List[Tuple[str, dict]]):
+async def req_services(url_headers: List[Tuple[str, dict, str]]):
     async with aiohttp.ClientSession() as sess:
         # for i in range(10):
         # start = time.time()
@@ -189,17 +226,29 @@ def run():
     2) async requests
     3) gather results and persist
     """
-    # url_headers = gen_common_service_requests()
-    url_headers = gen_requests()
-    print(url_headers)
-    loop = asyncio.get_event_loop()
-    start = time.time()
-    results = loop.run_until_complete(req_services(url_headers))
-    spent = time.time() - start
+    req_list = []
+    req_list.append(gen_common_api_requests())
+    # url_headers_common = gen_common_service_requests()
+    # url_headers_api = gen_common_api_requests()
+    # url_headers_lhr = gen_requests()
+    # print(url_headers)
+    # req_list = [url_headers_common, url_headers_api, url_headers_lhr]
+    print(req_list)
+    random.shuffle(req_list)
+    print(req_list)
 
-    print(f'total time: {spent}')
-    print(results)
-    process_results(results, start_total=start, spent_total=spent)
+    for name, reqs in req_list:
+        loop = asyncio.get_event_loop()
+        start = time.time()
+        results = loop.run_until_complete(req_services(reqs))
+        spent = time.time() - start
+
+        print(f'total time: {spent}')
+        print(results)
+        process_results(results,
+                        name=name,
+                        start_total=start,
+                        spent_total=spent)
 
 
 if __name__ == '__main__':
