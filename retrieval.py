@@ -5,6 +5,7 @@
 # home:
 # https://p4-service-home-f642omuzga-uc.a.run.app
 
+import os
 import time
 import asyncio
 import logging
@@ -26,6 +27,7 @@ logger.addHandler(handler)
 consoleHandler = logging.StreamHandler()
 consoleHandler.setLevel(logging.DEBUG)
 logger.addHandler(consoleHandler)
+logger.setLevel(logging.INFO)
 
 SERVICE_MAP = {'fitbit': ['steps']}
 GOOGLE_KEY = config.CREDENTIALS['google_search_api_key']
@@ -98,7 +100,12 @@ def gen_requests() -> Tuple[str, List[Tuple[str, dict, str]]]:
     return 'health services', pairs
 
 
-def process_results(results, name, start_total, spent_total):
+def process_results(results,
+                    name,
+                    start_total,
+                    spent_total,
+                    req_location='Stockholm',
+                    req_bredband='ComHem 100M/100M'):
     """
     data to record:
     - req_start
@@ -110,14 +117,41 @@ def process_results(results, name, start_total, spent_total):
     - cloud provider
     - req_location
     - req_bredband
+
+    example result item: {
+            'status': status,
+            # 'text': text,
+            'request_at': start,
+            'spent': spent,
+            'content_type': resp_headers.get('Content-Type'),
+            'content_length': resp_headers.get('Content-Length'),
+            'bytes_len': utf8len(text),
+            'service_name': service_name,
+            'url': url,
+        }
     """
-    pass
+    logger.info(f'process result: {name} at time {start_total}')
+
+    df = pd.DataFrame(results)
+    df['req_total_start_at'] = pd.Series(
+        np.repeat(start_total, repeats=len(results)))
+    df['req_total_spent'] = pd.Series(
+        np.repeat(spent_total, repeats=len(results)))
+    df['req_location'] = pd.Series(
+        np.repeat(req_location, repeats=len(results)))
+    df['req_bredband'] = pd.Series(
+        np.repeat(req_bredband, repeats=len(results)))
+    # print(df)
+
+    if not os.path.exists('results'):
+        os.mkdir('results')
+
+    df.to_csv(f'results/{name}_{start_total}.csv')
 
 
 def gen_common_service_requests(query_cities=CITIES):
     query = random.choice(query_cities)
-    # query = 'valley+forge+national+park'
-    # query = 'https://lilianweng.github.io/lil-log/2020/04/07/the-transformer-family.html#sparse-attention-matrix-factorization-sparse-transformers'
+
     urls = {
         # 'google search': f'https://google.se/search?q={query}',
         'google search': f'https://google.com/search?q={query}',
@@ -127,14 +161,9 @@ def gen_common_service_requests(query_cities=CITIES):
         # f'https://www.yelp.se/search?find_desc=Restauranger&find_loc=Stockholm',
         'yelp restaurant search':
         f'https://www.yelp.com/search?find_desc=Restauranger&find_loc={query}',
-        # f'https://www.googleapis.com/customsearch/v1?key={GOOGLE_KEY}&cx={GOOGLE_CX}&q={query}',
         'web archive': f'https://archive.org/search.php?query={query}',
         'imdb': f'https://www.imdb.com/find?q={query}',
         'tmdb': f'https://www.themoviedb.org/search?query={query}',
-        # f'https://api.duckduckgo.com/?q={query}&format=json',
-
-        # https://www.mediawiki.org/wiki/API:Search
-        # f'https://en.wikipedia.org/w/api.php?action=query&format=json&list=search&srsearch={query}'
     }
 
     headers = {}
@@ -143,9 +172,8 @@ def gen_common_service_requests(query_cities=CITIES):
 
 
 def gen_common_api_requests(query_cities=CITIES):
-    # query = 'valley+forge+national+park'
     query = random.choice(query_cities)
-    # query = 'https://lilianweng.github.io/lil-log/2020/04/07/the-transformer-family.html#sparse-attention-matrix-factorization-sparse-transformers'
+
     urls = {
         # yelp
         # f'https://api.yelp.com/v3/businesses/search?term={query}'
@@ -153,8 +181,7 @@ def gen_common_api_requests(query_cities=CITIES):
         # https://developers.google.com/custom-search/v1/using_rest#response_data
         'google search api':
         f'https://www.googleapis.com/customsearch/v1?key={GOOGLE_KEY}&cx={GOOGLE_CX}&q={query}',
-        'duck api':
-        f'https://api.duckduckgo.com/?q={query}&format=json',
+        'duck api': f'https://api.duckduckgo.com/?q={query}&format=json',
 
         ## Teleport public APIs https://developers.teleport.org/api/
         'teleport api':
@@ -198,7 +225,7 @@ async def fetch(session, url, headers, service_name):
             'content_type': resp_headers.get('Content-Type'),
             'content_length': resp_headers.get('Content-Length'),
             'bytes_len': utf8len(text),
-            'service': service_name,
+            'service_name': service_name,
             'url': url,
         }
 
@@ -220,22 +247,25 @@ async def req_services(url_headers: List[Tuple[str, dict, str]]):
         return results
 
 
+def pin_cloudrun(reqs):
+    logger.info(f'pin cloud run {[pair[2] for pair in reqs[1]]}')
+    loop = asyncio.get_event_loop()
+    loop.run_until_complete(req_services(reqs[1]))
+
+
 def run():
     """
     1) generate list of parameters for requests
     2) async requests
     3) gather results and persist
     """
+    pin_cloudrun(gen_requests())
+
     req_list = []
     req_list.append(gen_common_api_requests())
-    # url_headers_common = gen_common_service_requests()
-    # url_headers_api = gen_common_api_requests()
-    # url_headers_lhr = gen_requests()
-    # print(url_headers)
-    # req_list = [url_headers_common, url_headers_api, url_headers_lhr]
-    print(req_list)
+    req_list.append(gen_common_service_requests())
+    req_list.append(gen_requests())
     random.shuffle(req_list)
-    print(req_list)
 
     for name, reqs in req_list:
         loop = asyncio.get_event_loop()
@@ -243,8 +273,8 @@ def run():
         results = loop.run_until_complete(req_services(reqs))
         spent = time.time() - start
 
-        print(f'total time: {spent}')
-        print(results)
+        logger.info(f'total time: {spent}')
+        # print(results)
         process_results(results,
                         name=name,
                         start_total=start,
@@ -252,5 +282,14 @@ def run():
 
 
 if __name__ == '__main__':
-    run()
+    try:
+        while True:
+            run()
+            time.sleep(1 * 60 * 60)
+    except:
+        time.sleep(30 * 60)
+        while True:
+            run()
+            time.sleep(1 * 60 * 60)
+
     # print(config.CREDENTIALS['google_search_api_key'])
