@@ -1,4 +1,5 @@
 import os
+import json
 
 # BASE_DIR = os.path.dirname(os.path.dirname(__file__))
 #
@@ -26,3 +27,13 @@ LOG_LEVEL = 'INFO'
 # # STOREFN = os.path.abspath('./articles.jsonld')
 # #storefn = '/home/simon/codes/film.dev/movies.n3'
 # STOREURI = 'file://' + STOREFN
+
+SERVICE_ENDPOINT = {
+    'fitbit': 'https://p4-service-fitbit-f642omuzga-uc.a.run.app',
+    'home': 'https://p4-service-home-f642omuzga-uc.a.run.app',
+    'ihealth': 'https://p4-service-ihealth-f642omuzga-uc.a.run.app',
+    'phr': 'https://p4-service-lhr-jena-phr-f642omuzga-uc.a.run.app',
+}
+
+with open('credentials.json', 'r') as f:
+    CREDENTIALS = json.load(f)
