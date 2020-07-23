@@ -7,6 +7,7 @@
 
 import os
 import time
+from datetime import datetime
 import asyncio
 import logging
 import random
@@ -130,7 +131,9 @@ def process_results(results,
             'url': url,
         }
     """
-    logger.info(f'process result: {name} at time {start_total}')
+    logger.info(
+        f'process result: [{name}] started at [{datetime.fromtimestamp(start_total)}]'
+    )
 
     df = pd.DataFrame(results)
     df['req_total_start_at'] = pd.Series(
@@ -181,7 +184,8 @@ def gen_common_api_requests(query_cities=CITIES):
         # https://developers.google.com/custom-search/v1/using_rest#response_data
         'google search api':
         f'https://www.googleapis.com/customsearch/v1?key={GOOGLE_KEY}&cx={GOOGLE_CX}&q={query}',
-        'duck api': f'https://api.duckduckgo.com/?q={query}&format=json',
+        'duck api':
+        f'https://api.duckduckgo.com/?q={query}&format=json',
 
         ## Teleport public APIs https://developers.teleport.org/api/
         'teleport api':
@@ -273,7 +277,7 @@ def run():
         results = loop.run_until_complete(req_services(reqs))
         spent = time.time() - start
 
-        logger.info(f'total time: {spent}')
+        logger.info(f'total time spent: {spent}')
         # print(results)
         process_results(results,
                         name=name,
