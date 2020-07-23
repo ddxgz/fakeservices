@@ -131,10 +131,6 @@ def process_results(results,
             'url': url,
         }
     """
-    logger.info(
-        f'process result: [{name}] started at [{datetime.fromtimestamp(start_total)}]'
-    )
-
     df = pd.DataFrame(results)
     df['req_total_start_at'] = pd.Series(
         np.repeat(start_total, repeats=len(results)))
@@ -277,12 +273,16 @@ def run():
         results = loop.run_until_complete(req_services(reqs))
         spent = time.time() - start
 
-        logger.info(f'total time spent: {spent}')
+        # logger.info(f'total time spent: {spent}')
         # print(results)
         process_results(results,
                         name=name,
                         start_total=start,
                         spent_total=spent)
+
+        logger.info(f'processed result of: [{name}] | '
+                    f'total time spent: [{spent:.4f}] | '
+                    f'started at [{datetime.fromtimestamp(start)}]')
 
 
 if __name__ == '__main__':
