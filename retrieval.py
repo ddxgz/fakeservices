@@ -260,6 +260,7 @@ def run():
     3) gather results and persist
     """
     pin_cloudrun(gen_requests())
+    time.sleep(30)
 
     req_list = []
     req_list.append(gen_common_api_requests())
@@ -280,8 +281,8 @@ def run():
                         start_total=start,
                         spent_total=spent)
 
-        logger.info(f'processed result of: [{name}] | '
-                    f'total time spent: [{spent:.4f}] | '
+        logger.info(f'Processed result of [{name}] | '
+                    f'total time spent [{spent:.4f}] | '
                     f'started at [{datetime.fromtimestamp(start)}]')
 
 
