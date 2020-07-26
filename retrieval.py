@@ -296,7 +296,7 @@ if __name__ == '__main__':
     try:
         while True:
             run()
-            time.sleep(0.5 * 60 * 60)
+            time.sleep(0.7 * 60 * 60)
     except:
         time.sleep(10 * 60)
         while True:
