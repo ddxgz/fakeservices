@@ -259,8 +259,14 @@ def run():
     2) async requests
     3) gather results and persist
     """
-    pin_cloudrun(gen_requests())
-    time.sleep(30)
+    try:
+        pin_cloudrun(gen_requests())
+    except:
+        logger.error('pin cloud run failed, wait some time to pin again.')
+        time.sleep(10*60)
+        pin_cloudrun(gen_requests())
+
+    time.sleep(10)
 
     req_list = []
     req_list.append(gen_common_api_requests())
@@ -290,9 +296,9 @@ if __name__ == '__main__':
     try:
         while True:
             run()
-            time.sleep(1 * 60 * 60)
+            time.sleep(0.5 * 60 * 60)
     except:
-        time.sleep(30 * 60)
+        time.sleep(10 * 60)
         while True:
             run()
             time.sleep(1 * 60 * 60)
