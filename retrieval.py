@@ -211,12 +211,27 @@ def utf8len(s):
 async def fetch(session, url, headers, service_name):
     start = time.time()
     # print(f'start:{start}')
-    async with session.get(url, headers=headers) as resp:
-        status = resp.status
-        text = await resp.text()
-        spent = time.time() - start
-        # print(f'spent: {spent}')
-        resp_headers = resp.headers
+    try:
+        async with session.get(url, headers=headers) as resp:
+            status = resp.status
+            text = await resp.text()
+            spent = time.time() - start
+            # print(f'spent: {spent}')
+            resp_headers = resp.headers
+    except aiohttp.client_exceptions.ClientConnectorError as e:
+        logger.error(f'error client exception when call {url}')
+        return {
+            'status': 999,
+            # 'text': text,
+            'request_at': start,
+            'spent': 999,
+            'content_type': 'client exception',
+            'content_length': 'client exception',
+            'bytes_len': 0,
+            'service_name': service_name,
+            'url': url,
+        }
+    else:
         return {
             'status': status,
             # 'text': text,
@@ -263,7 +278,7 @@ def run():
         pin_cloudrun(gen_requests())
     except:
         logger.error('pin cloud run failed, wait some time to pin again.')
-        time.sleep(10*60)
+        time.sleep(10 * 60)
         pin_cloudrun(gen_requests())
 
     time.sleep(10)
@@ -298,6 +313,7 @@ if __name__ == '__main__':
             run()
             time.sleep(0.7 * 60 * 60)
     except:
+        logger.error('Error while run(), wait some time to try again.')
         time.sleep(10 * 60)
         while True:
             run()
