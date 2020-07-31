@@ -39,7 +39,7 @@ AZURE_SERVICE_ENDPOINT = {
     'fitbit': 'http://p4-services-fitbit.northeurope.azurecontainer.io',
     'home':'http://p4-services-home.northeurope.azurecontainer.io',
     'ihealth':'http://p4-services-ihealth.northeurope.azurecontainer.io',
-    'phr':'http://p4-services-lhr-jena-phr.northeurope.azurecontainer.io',
+    'phr':'http://p4-services-lhr-jena-phr.northeurope.azurecontainer.io:8080',
 }
 
 with open('credentials.json', 'r') as f:
