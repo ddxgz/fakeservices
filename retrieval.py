@@ -41,10 +41,18 @@ CITIES = [
 
 
 def get_url(name: str,
+            host: str,
             resource: str = 'steps',
             start_date: str = '2018-01-01',
             end_date: str = '2018-01-03'):
-    base = config.SERVICE_ENDPOINT[name]
+    if host == 'gcloud':
+        base = config.SERVICE_ENDPOINT[name]
+    elif host == 'azure':
+        base = config.AZURE_SERVICE_ENDPOINT[name]
+    else:
+        host = 'gcloud'
+        base = config.SERVICE_ENDPOINT[name]
+
     if name == 'fitbit':
         res_path = f'/1/user/-/activities/{resource}/date/{start_date}/{end_date}/'
     elif name == 'ihealth':
@@ -59,7 +67,7 @@ def get_url(name: str,
     return base + res_path
 
 
-def gen_requests() -> Tuple[str, List[Tuple[str, dict, str]]]:
+def gen_requests(provider: str) -> Tuple[str, List[Tuple[str, dict, str]]]:
     """generate a list of requests to be performed
 
     A list of tuples of (url, content_type, service_name)
@@ -72,7 +80,7 @@ def gen_requests() -> Tuple[str, List[Tuple[str, dict, str]]]:
     end = start + pd.offsets.Day(np.random.randint(1, 60))
     end_date = end.date()
 
-    pairs.append((get_url('home', resource='environment'), {
+    pairs.append((get_url('home', provider, resource='environment'), {
         'Content-Type': 'text/turtle'
     }, 'home'))
 
@@ -80,6 +88,7 @@ def gen_requests() -> Tuple[str, List[Tuple[str, dict, str]]]:
     fitbit_res_type = np.random.choice(range(0, len(fitbit_res_types)))
     json_content_type = np.random.choice(content_types)
     fitbit_url = get_url('fitbit',
+                         provider,
                          resource=fitbit_res_types[fitbit_res_type],
                          start_date=start_date,
                          end_date=end_date)
@@ -89,14 +98,18 @@ def gen_requests() -> Tuple[str, List[Tuple[str, dict, str]]]:
     ihealth_res_type = np.random.choice(ihealth_res_types)
     ihealth_content_type = np.random.choice(content_types)
     ihealth_url = get_url('ihealth',
+                          provider,
                           resource=ihealth_res_type,
                           start_date=start_date,
                           end_date=end_date)
     pairs.append((ihealth_url, {'Content-Type': json_content_type}, 'ihealth'))
 
-    pairs.append((get_url('phr', start_date=start_date, end_date=end_date), {
-        'Content-Type': 'application/fhir+turtle'
-    }, 'phr'))
+    pairs.append((get_url('phr',
+                          provider,
+                          start_date=start_date,
+                          end_date=end_date), {
+                              'Content-Type': 'application/fhir+turtle'
+                          }, 'phr'))
 
     return 'health services', pairs
 
@@ -275,7 +288,8 @@ def run():
     3) gather results and persist
     """
     try:
-        pin_cloudrun(gen_requests())
+        pin_cloudrun(gen_requests('gcloud'))
+        pin_cloudrun(gen_requests('azure'))
     except:
         logger.error('pin cloud run failed, wait some time to pin again.')
         time.sleep(10 * 60)
@@ -286,7 +300,8 @@ def run():
     req_list = []
     req_list.append(gen_common_api_requests())
     req_list.append(gen_common_service_requests())
-    req_list.append(gen_requests())
+    req_list.append(gen_requests('gcloud'))
+    req_list.append(gen_requests('azure'))
     random.shuffle(req_list)
 
     for name, reqs in req_list:
