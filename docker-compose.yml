@@ -20,8 +20,9 @@ services:
             - "8000:8000"
         command: gunicorn -b 0.0.0.0:8000 -k gevent fakeservices.home_app:wsgiapp
     lhr_jena_app:
-        build: 
-            context: ~/dockersharing/data/lhr-jena
-            dockerfile: Dockerfile
+        # build: 
+        #     context: ~/dockersharing/data/lhr-jena
+        #     dockerfile: Dockerfile
+        image: "ddxgz/lhr-jena-phr"
         ports:
             - "8080:8080"
