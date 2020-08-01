@@ -49,6 +49,8 @@ def get_url(name: str,
         base = config.SERVICE_ENDPOINT[name]
     elif host == 'azure':
         base = config.AZURE_SERVICE_ENDPOINT[name]
+    elif host == 'vultr':
+        base = config.VULTR_SERVICE_ENDPOINT[name]
     else:
         host = 'gcloud'
         base = config.SERVICE_ENDPOINT[name]
@@ -302,6 +304,7 @@ def run():
     req_list.append(gen_common_service_requests())
     req_list.append(gen_requests('gcloud'))
     req_list.append(gen_requests('azure'))
+    req_list.append(gen_requests('vultr'))
     random.shuffle(req_list)
 
     for name, reqs in req_list:

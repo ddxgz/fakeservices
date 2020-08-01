@@ -37,9 +37,19 @@ SERVICE_ENDPOINT = {
 
 AZURE_SERVICE_ENDPOINT = {
     'fitbit': 'http://p4-services-fitbit.northeurope.azurecontainer.io',
-    'home':'http://p4-services-home.northeurope.azurecontainer.io',
-    'ihealth':'http://p4-services-ihealth.northeurope.azurecontainer.io',
-    'phr':'http://p4-services-lhr-jena-phr.northeurope.azurecontainer.io:8080',
+    'home': 'http://p4-services-home.northeurope.azurecontainer.io',
+    'ihealth': 'http://p4-services-ihealth.northeurope.azurecontainer.io',
+    'phr':
+    'http://p4-services-lhr-jena-phr.northeurope.azurecontainer.io:8080',
+}
+
+VULTR_IP = os.getenv("VULTR_IP")
+
+VULTR_SERVICE_ENDPOINT = {
+    'fitbit': f'http://{VULTR_IP}:8082',
+    'home': f'http://{VULTR_IP}:8083',
+    'ihealth': f'http://{VULTR_IP}:8081',
+    'phr': f'http://{VULTR_IP}:8080',
 }
 
 with open('credentials.json', 'r') as f:
