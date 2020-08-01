@@ -3,19 +3,21 @@ services:
     fitbit_app:
         build: .
         volumes:
-            - ./:/code
+            - .:/code
         ports:
             - "8082:8002"
         command: gunicorn -b 0.0.0.0:8002 -k gevent fakeservices.fitbit_app:wsgiapp
     ihealth_app:
         build: .
         volumes:
-            - ./:/code
+            - .:/code
         ports:
             - "8081:8001"
         command: gunicorn -b 0.0.0.0:8001 -k gevent fakeservices.ihealth_app:wsgiapp
     home_app:
         build: .
+        volumes:
+            - .:/code
         ports:
             - "8083:8000"
         command: gunicorn -b 0.0.0.0:8000 -k gevent fakeservices.home_app:wsgiapp
