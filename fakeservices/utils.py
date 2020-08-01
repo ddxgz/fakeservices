@@ -67,7 +67,7 @@ def mylogger(log_name):
         elif conf.LOG_LEVEL == 'NOTSET':
             level = logging.NOTSET
         else:
-            pass
+            level = logging.ERROR
         gLogger.setLevel(level)
 
         # hostname = get_host_info()

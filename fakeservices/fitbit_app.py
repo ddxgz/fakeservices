@@ -9,9 +9,9 @@ from flask import Flask, jsonify, request, session, g, redirect, url_for, abort,
 import numpy as np
 import pandas as pd
 
-from . import utils
+# from . import utils
 
-logger = utils.mylogger(__name__)
+# logger = utils.mylogger(__name__)
 
 app = Flask(__name__)
 app.secret_key = str(uuid.uuid4())
@@ -97,7 +97,7 @@ def activities(resource_path, base_date, end_date):
             require_annotation = True
         activity = FitbitModel('activities', resource_path, base_date,
                                end_date, require_annotation=require_annotation)
-        logger.debug(f'data: {activity}')
+        # logger.debug(f'data: {activity}')
 
         return jsonify(activity.data)
 
@@ -112,5 +112,5 @@ def foods_log(resource_path, base_date, end_date):
             require_annotation = True
         activity = FitbitModel('foods/log', resource_path, base_date, end_date,
                                require_annotation=require_annotation)
-        logger.debug(f'data: {activity}')
+        # logger.debug(f'data: {activity}')
         return jsonify(activity.data)

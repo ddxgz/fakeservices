@@ -11,9 +11,9 @@ import numpy as np
 import pandas as pd
 
 from . import home_service
-from . import utils
+# from . import utils
 
-logger = utils.mylogger(__name__)
+# logger = utils.mylogger(__name__)
 
 app = Flask(__name__)
 app.secret_key = str(uuid.uuid4())
@@ -37,5 +37,5 @@ def environment():
     if request.method == 'GET':
         graph = HOME_SYS.current_obs_graph_str()
 
-        logger.debug(f'data: {graph}')
+        # logger.debug(f'data: {graph}')
         return (graph, 200, {'Content-Type': 'text/turtle'})
