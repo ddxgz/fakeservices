@@ -19,6 +19,7 @@ import pandas as pd
 from typing import List, Tuple
 
 from fakeservices import config, fitbit_app, ihealth_app
+import azure_utils
 
 logger = logging.getLogger(__name__)
 # logger.setLevel(logging.In)
@@ -160,7 +161,13 @@ def process_results(results,
     if not os.path.exists('results'):
         os.mkdir('results')
 
-    df.to_csv(f'results/{name}_{start_total}.csv')
+    dirname = 'results'
+    filename = f'{name}_{start_total}.csv'
+    csv_file = os.path.join(dirname, filename)
+    df.to_csv(csv_file)
+    azure_utils.upload_file_datalake(filename,
+                                     dirname,
+                                     to_path='req-results/results/pi')
 
 
 def gen_common_service_requests(query_cities=CITIES):
