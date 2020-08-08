@@ -1,6 +1,10 @@
 import os
 import json
 
+from dotenv import load_dotenv
+
+load_dotenv()
+
 # BASE_DIR = os.path.dirname(os.path.dirname(__file__))
 #
 # SERVER_DIR = os.path.join(BASE_DIR, 'nyapeking')
@@ -54,3 +58,8 @@ VULTR_SERVICE_ENDPOINT = {
 
 with open('credentials.json', 'r') as f:
     CREDENTIALS = json.load(f)
+
+AZURE_STORAGE_CONNECTION_STRING = os.getenv('AZURE_STORAGE_CONNECTION_STRING')
+AZURE_EVENT_HUB_CONNECTION_STRING = os.getenv(
+    'AZURE_EVENT_HUB_CONNECTION_STRING')
+AZURE_EVENT_HUB_NAME = os.getenv('AZURE_EVENT_HUB_NAME')
