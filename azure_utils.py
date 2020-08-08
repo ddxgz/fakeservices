@@ -47,7 +47,7 @@ def upload_dir_datalake_newfile(from_path: str,
             # print(csv_f)
             file_cli = dir_cli.get_file_client(csv_f)
             with open(os.path.join(from_path, csv_f), 'r') as f:
-                file_cli.upload_data(f.read(), overwrite=False)
+                file_cli.upload_data(f.read(), overwrite=True)
 
     except Exception as e:
         print(e)
@@ -92,7 +92,7 @@ def upload_file_datalake(filename: str,
 
 
 if __name__ == '__main__':
-    upload_dir_datalake_newfile('results', 'req-results/results/pi')
+    upload_dir_datalake_newfile('results', 'results/results/pi')
 
 # loop = asyncio.get_event_loop()
 # loop.run_until_complete(azure_send_event([{'a': 'a'}, {'B': 'B'}]))
