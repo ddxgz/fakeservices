@@ -72,7 +72,7 @@ def upload_file_datalake(filename: str,
             time.sleep(3)
 
         with open(filepath, 'r') as f:
-            file_cli.upload_data(f.read(), overwrite=False)
+            file_cli.upload_data(f.read(), overwrite=True)
 
     except Exception as e:
         print(e)
