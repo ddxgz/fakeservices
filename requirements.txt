@@ -4,8 +4,6 @@ async-timeout==3.0.1
 attrs==19.3.0
 autopep8==1.4.4
 azure-core==1.7.0    
-azure-eventhub==5.1.0    
-azure-eventhub-checkpointstoreblob-aio==1.1.0    
 azure-storage-blob==12.3.2   
 azure-storage-file-datalake==12.0.2 
 backcall==0.1.0
@@ -64,6 +62,7 @@ pyparsing==2.4.0
 pyrsistent==0.15.5
 PySnooper==0.1.0
 python-dateutil==2.8.1
+python-dotenv==0.14.0   
 pytz==2019.3
 PyYAML==5.1.2
 pyzmq==18.1.0

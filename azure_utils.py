@@ -3,8 +3,8 @@ import time
 import glob
 import asyncio
 
-from azure.eventhub.aio import EventHubProducerClient
-from azure.eventhub import EventData
+# from azure.eventhub.aio import EventHubProducerClient
+# from azure.eventhub import EventData
 from azure.storage.filedatalake import DataLakeServiceClient
 
 from fakeservices import config
@@ -78,17 +78,17 @@ def upload_file_datalake(filename: str,
         print(e)
 
 
-async def azure_send_event(events):
-    producer = EventHubProducerClient.from_connection_string(
-        conn_str=config.AZURE_EVENT_HUB_CONNECTION_STRING,
-        eventhub_name=config.AZURE_EVENT_HUB_NAME)
-    async with producer:
-        event_data_batch = await producer.create_batch()
+# async def azure_send_event(events):
+#     producer = EventHubProducerClient.from_connection_string(
+#         conn_str=config.AZURE_EVENT_HUB_CONNECTION_STRING,
+#         eventhub_name=config.AZURE_EVENT_HUB_NAME)
+#     async with producer:
+#         event_data_batch = await producer.create_batch()
 
-        for event in events:
-            event_data_batch.add(EventData(event))
+#         for event in events:
+#             event_data_batch.add(EventData(event))
 
-        await producer.send_batch(event_data_batch)
+#         await producer.send_batch(event_data_batch)
 
 
 if __name__ == '__main__':
